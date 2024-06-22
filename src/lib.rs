@@ -92,7 +92,7 @@ impl FreqDetector {
             + self.fft_bucket_to_freq(neighbors[1].0) * neighbors[1].1.abs())
             / (neighbors[0].1.abs() + neighbors[1].1.abs());
         if res.is_nan() {
-            panic!("{neighbors:?}");
+            panic!("Nan values found {neighbors:?}");
         } else {
             res
         }
