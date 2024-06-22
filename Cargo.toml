@@ -5,7 +5,8 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Detecting the most prominent frequency in samples using FFT"
 categories = ["multimedia::audio"]
-keywords = ["sound", "audio", "frequency", "detection", "analysis", "FFT"]
+keywords = ["sound", "audio", "frequency", "FFT"]
+repository = "https://github.com/samoylovfp/freq-det"
 
 [dependencies]
 rustfft = "6.2.0"
