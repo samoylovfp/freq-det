@@ -35,7 +35,7 @@ fn main() {
         while buffer.len() < sample_count {
             buffer.push(sound_receiver.recv().unwrap());
         }
-        println!("{}", freq_det.detect(&buffer));
+        println!("{}", freq_det.detect(&buffer).unwrap());
         buffer.clear();
     }
 }

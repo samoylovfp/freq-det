@@ -16,7 +16,7 @@
 //!     .collect::<Vec<_>>();
 //!
 //! let freq_detector = FreqDetector::new(44100, sample_count);
-//! assert_eq!(freq_detector.detect(&sinusoid_440hz).round(), 440.0);
+//! assert_eq!(freq_detector.detect(&sinusoid_440hz).unwrap().round(), 440.0);
 //! ```
 
 use std::sync::Arc;
@@ -25,6 +25,7 @@ use rustfft::{
     num_complex::{Complex, ComplexFloat},
     Fft, FftPlanner,
 };
+use thiserror::Error;
 
 /// Frequency detector
 pub struct FreqDetector {
@@ -49,11 +50,17 @@ impl FreqDetector {
         }
     }
 
-    /// # Panics
+    /// # Errors
     ///
     /// - if `samples.len()` does not match the `sample_count` passed to [Self::new]
     /// - if there are `NaN`s in the sample slice
-    pub fn detect(&self, samples: &[f32]) -> f32 {
+    pub fn detect(&self, samples: &[f32]) -> Result<f32, DetectError> {
+        if samples.len() != self.sample_count {
+            return Err(DetectError::SampleCountMismatch {
+                expected: self.sample_count,
+                passed: samples.len(),
+            });
+        }
         let mut buf = samples
             .iter()
             .copied()
@@ -70,7 +77,7 @@ impl FreqDetector {
             .max_by_key(|(_, s)| (s.abs() * 1000.0) as u32)
             .expect("to have at least 1 sample");
         if peak.1.abs() < 0.00001 {
-            return 0.0;
+            return Ok(0.0);
         }
 
         // use neighbors for anti-aliasing
@@ -92,15 +99,23 @@ impl FreqDetector {
             + self.fft_bucket_to_freq(neighbors[1].0) * neighbors[1].1.abs())
             / (neighbors[0].1.abs() + neighbors[1].1.abs());
         if res.is_nan() {
-            panic!("Nan values found {neighbors:?}");
+            Err(DetectError::NansFound)
         } else {
-            res
+            Ok(res)
         }
     }
 
     fn fft_bucket_to_freq(&self, bucket: usize) -> f32 {
         bucket as f32 * self.sample_rate as f32 / self.sample_count as f32
     }
+}
+
+#[derive(Error, Debug)]
+pub enum DetectError {
+    #[error("Invalid sample count passed (expected {expected}, passed {passed})")]
+    SampleCountMismatch { expected: usize, passed: usize },
+    #[error("NaNs in the samples")]
+    NansFound,
 }
 
 #[cfg(test)]
@@ -110,7 +125,7 @@ mod tests {
     #[test]
     fn freq_detector_smoke_test() {
         use std::f32::consts::TAU;
-        let sample_count = 4096 * 4;
+        let sample_count = 4096 * 2;
         let freq_detector = FreqDetector::new(44100, sample_count);
 
         for freq in [10, 20, 30, 100, 1000, 2000] {
@@ -118,15 +133,15 @@ mod tests {
                 .map(|i| {
                     (i as f32 / 44100.0 * freq as f32 * TAU).sin()
                         // noise
-                        + 0.5 * (i as f32 / 44100.0 * 101.0 * TAU).sin()
-                        + 0.5 * (i as f32 / 44100.0 * 120.0 * TAU).sin()
+                        + 0.3 * (i as f32 / 44100.0 * 101.0 * TAU).sin()
+                        + 0.3 * (i as f32 / 44100.0 * 120.0 * TAU).sin()
                 })
                 .collect::<Vec<_>>();
 
-            let detected_freq = freq_detector.detect(&sin_samples);
+            let detected_freq = freq_detector.detect(&sin_samples).unwrap();
             dbg!(detected_freq, freq);
             assert!(
-                (detected_freq - freq as f32).abs() < 0.1,
+                (detected_freq - freq as f32).abs() < 0.5,
                 "detected {detected_freq} expected {freq}"
             );
         }

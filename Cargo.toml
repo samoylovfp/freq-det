@@ -1,6 +1,6 @@
 [package]
 name = "freq-det"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Detecting the most prominent frequency in samples using FFT"
@@ -10,6 +10,7 @@ repository = "https://github.com/samoylovfp/freq-det"
 
 [dependencies]
 rustfft = "6.2.0"
+thiserror = "1.0.61"
 
 [dev-dependencies]
 cpal = "0.15.3"

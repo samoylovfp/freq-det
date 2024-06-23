@@ -4,7 +4,7 @@
 use freq_det::FreqDetector;
 
 let detector = FreqDetector::new(44100, 4096);
-let freq: f32 = detector.detect(&samples);
+let freq: f32 = detector.detect(&samples).unwrap();
 ```
 
 It is that easy!
