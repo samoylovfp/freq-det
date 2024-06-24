@@ -15,7 +15,7 @@
 //!     })
 //!     .collect::<Vec<_>>();
 //!
-//! let freq_detector = FreqDetector::new(44100, sample_count);
+//! let freq_detector = FreqDetector::new(44100, sample_count).unwrap();
 //! assert_eq!(freq_detector.detect(&sinusoid_440hz).unwrap().round(), 440.0);
 //! ```
 
@@ -40,14 +40,24 @@ impl FreqDetector {
     /// `sample_count` numbers between `2048` and `8192` work well.
     /// More samples usually means more accuracy, but requires more audio,
     /// which also means more latency for realtime application.
-    pub fn new(sample_rate: usize, sample_count: usize) -> Self {
+    /// 
+    /// # Errors
+    /// - if sample rate is 0
+    /// - if fewer than 4 samples are passed
+    pub fn new(sample_rate: usize, sample_count: usize) -> Result<Self, DetectorCreateError> {
         let mut planner = FftPlanner::new();
-        Self {
+        if sample_rate < 1 {
+            return Err(DetectorCreateError::SampleRateTooLow)
+        }
+        if sample_count < 4 {
+            return Err(DetectorCreateError::TooFewSamples)
+        }
+        Ok(Self {
             fft: planner.plan_fft_forward(sample_count),
 
             sample_count,
             sample_rate,
-        }
+        })
     }
 
     /// # Errors
@@ -118,6 +128,14 @@ pub enum DetectError {
     NansFound,
 }
 
+#[derive(Error, Debug)]
+pub enum DetectorCreateError {
+    #[error("Detector does not support sample rate < 1 sample per second")]
+    SampleRateTooLow,
+    #[error("Needs at least 4 samples for detection")]
+    TooFewSamples
+}
+
 #[cfg(test)]
 mod tests {
     use super::FreqDetector;
@@ -126,7 +144,7 @@ mod tests {
     fn freq_detector_smoke_test() {
         use std::f32::consts::TAU;
         let sample_count = 4096 * 2;
-        let freq_detector = FreqDetector::new(44100, sample_count);
+        let freq_detector = FreqDetector::new(44100, sample_count).unwrap();
 
         for freq in [10, 20, 30, 100, 1000, 2000] {
             let sin_samples = (0..sample_count)

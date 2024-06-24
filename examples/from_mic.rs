@@ -29,7 +29,7 @@ fn main() {
     stream.play().unwrap();
 
     let sample_count = 4096;
-    let freq_det = FreqDetector::new(sample_rate as usize, sample_count);
+    let freq_det = FreqDetector::new(sample_rate as usize, sample_count).unwrap();
     let mut buffer = vec![];
     loop {
         while buffer.len() < sample_count {
